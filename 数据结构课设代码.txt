@@ -1,0 +1,797 @@
+#define _CRT_SECURE_NO_WARNINGS
+#include<stdio.h>
+#include<stdlib.h>
+#include <time.h>
+
+typedef int E;
+
+typedef struct Number {//用于结构体数组
+    E element;
+    int Color;//颜色标记（默认为0，排序好了就为1）
+} Number;
+
+typedef struct {
+    int time; //时间显示
+    int Count; // 运行次数和比较次数显示
+    int SingleStepOperation; //排序过程显示
+    int result;  //排序结果显示  
+    int save;//是否保存数据 
+} Config;
+
+Config* InitConfig() {
+    Config* config = (Config*)malloc(sizeof(Config));
+    if (config == NULL) {
+        printf("内存分配失败!");
+        exit(1);
+    }
+    config->time = 1; // 把5种设置都默认开启
+    config->Count = 1;
+    config->SingleStepOperation = 1;
+    config->result = 1;
+    config->save = 1;
+    return config;
+}
+
+void ChangeConfig(Config* config) {
+    while (1) {       
+        printf("\t\t\t\t\t============================\n");
+        printf("\t\t\t\t\t1.  (%s) 过程单步显示\n", config->SingleStepOperation == 1 ? "\x1b[32m开启\x1b[0m" : "\x1b[31m关闭\x1b[0m");
+        printf("\t\t\t\t\t2.  (%s) 比较次数交换次数显示\n", config->Count == 1 ? "\x1b[32m开启\x1b[0m" : "\x1b[31m关闭\x1b[0m");
+        printf("\t\t\t\t\t3.  (%s) 运行时间显示\n", config->time == 1 ? "\x1b[32m开启\x1b[0m" : "\x1b[31m关闭\x1b[0m");
+        printf("\t\t\t\t\t4.  (%s) 排序结果显示\n", config->result == 1 ? "\x1b[32m开启\x1b[0m" : "\x1b[31m关闭\x1b[0m");
+        printf("\t\t\t\t\t5.  (%s) 保存数据\n", config->save == 1 ? "\x1b[32m开启\x1b[0m" : "\x1b[31m关闭\x1b[0m");
+        printf("\t\t\t\t\t6.        返回\n");
+        printf("\t\t\t\t\t============================\n");      
+        int choice;
+        printf("\t\t\t\t\t请选择要修改的设置(1-6): ");
+        scanf("%d", &choice);
+        switch (choice) {
+        case 1:
+            config->SingleStepOperation = (config->SingleStepOperation == 1) ? 0 : 1;
+            break;
+        case 2:
+            config->Count = (config->Count == 1) ? 0 : 1;
+            break;
+        case 3:
+            config->time = (config->time == 1) ? 0 : 1;
+            break;
+        case 4:
+            config->result = (config->result == 1) ? 0 : 1;
+            break;
+        case 5 :
+            config->save = (config->save == 1) ? 0 : 1;
+            break;
+        case 6 :
+            return;
+        default:
+            printf("无效的选项\n");
+        }
+        system("cls");
+    }
+}
+
+int RandomArray(Number arr[], int size) {//为结构体数组进行赋值
+    srand(time(NULL));
+    for (int i = 0; i < size; i++) {
+        arr[i].element = rand();
+        arr[i].Color = 0;
+    }
+    return 1;
+}
+
+Number* CreateStructArray(int size) {
+    Number* arr = (Number*)malloc(size * sizeof(Number));
+    if (arr == NULL) {
+        printf("内存分配失败!");
+        exit(1);
+    }
+    return arr;
+}
+
+Number* Resize(Number arr[], int* size) { //扩容
+    int newSize = *size + 1;
+    Number* newArr = (Number*)realloc(arr, newSize * sizeof(Number));
+    if (newArr == NULL) {
+        printf("内存分配失败!");
+        exit(1);
+    }
+    *size = newSize;
+    return newArr; // 返回新的数组指针
+}
+
+void ShuffleArray(Number arr[], int size) {//打乱数组:每次将当前元素与一个随机选择的元素进行交换，从而实现了打乱数组的目的。
+    for (int i = size - 1; i > 0; i--) {
+        int j = rand() % (i + 1); // 生成一个随机索引 j，其中 0 <= j <= i
+        // 交换 arr[i] 和 arr[j]
+        E temp = arr[i].element;
+        arr[i].element = arr[j].element;
+        arr[j].element = temp;
+    }
+}
+
+void ClearArray(Number* arr) {  //清空数据
+    if (arr != NULL) {
+        free(arr); // 释放动态分配的数组内存
+        arr = NULL; // 将数组指针置为NULL
+    }
+}
+
+void BubbleSort(Number arr[], int size,Config* config) {//每一轮都会打印，最后打印比较次数和交换次数以及时间
+    int SwapCount = 0;//交换次数
+    int CompareCount = 0;//比较次数
+    clock_t start, end;
+    double cpu_time_used;
+    start = clock(); // 记录开始时间
+    for (int i = 0; i < size ; i++) {
+        for (int j = 1; j < size - i; j++) {
+            CompareCount++;
+            if (arr[j - 1].element > arr[j].element) {
+                E tmp = arr[j - 1].element;
+                arr[j - 1].element = arr[j].element;
+                arr[j].element = tmp;
+                SwapCount++;
+            }
+        }
+        arr[size - i - 1].Color = 1;//把排好的数字标记颜色
+        if (config->SingleStepOperation == 1) {//单步过程开启就使用
+            for (int k = 0; k < size; k++) {//打印每一轮排序的结果
+                if (arr[k].Color == 0)printf("%d ", arr[k].element);//未标记颜色的按元素打印
+                else {
+                    printf("\x1b[31m%d\x1b[0m", arr[k].element);//标记了颜色的用红色字体打印
+                    printf(" ");
+                }
+            }
+            printf("\n");
+            getchar(); // 等待用户按下回车键
+        }
+    }
+    printf("数据已排序!\n");
+    if (config->result == 1) {
+        printf("\x1b[32m最终的结果: "); // 使用绿色字体打印最终的结果
+        for (int m = 0; m < size; m++) {
+            printf("%d ", arr[m].element);
+        }
+    }
+    printf("\x1b[0m\n"); // 恢复默认的字体颜色
+    end = clock(); // 记录结束时间
+    cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC; // 计算排序所需时间
+    if(config->Count == 1)printf("比较次数: %d   交换次数:%d\n", CompareCount, SwapCount);
+    if(config->time == 1)printf("排序所需时间: %f 秒\n",cpu_time_used);
+    for (int m = 0; m < size; m++) {//最后把颜色标记置回0
+        arr[m].Color = 0;
+    }
+}
+
+void SelectionSort(Number arr[], int size, Config* config) {//选择排序
+    clock_t start, end;
+    double cpu_time_used;
+    int Swapcount = 0;//交换次数
+    int CompareCount = 0;//比较次数
+    start = clock(); // 记录开始时间
+    for (int i = 0; i < size; i++) {
+        int min_index = i;
+        for (int j = i + 1; j < size; j++) {
+            CompareCount++;//比较次数加1
+            if (arr[j].element < arr[min_index].element) {
+                min_index = j;
+                Swapcount++;//交换次数加1
+            }
+        }
+        // 交换 arr[i] 和 arr[min_index]
+        E temp = arr[i].element;
+        arr[i].element = arr[min_index].element;
+        arr[min_index].element = temp;
+        
+        arr[i].Color = 1;
+        if (config->SingleStepOperation == 1) {//单步过程功能开启就进行
+            for (int k = 0; k < size; k++) {
+                if (arr[k].Color == 0) {
+                    printf("%d ", arr[k].element);
+                }
+                else {
+                    printf("\x1b[31m%d\x1b[0m", arr[k].element);
+                    printf(" ");
+                }
+            }
+            printf("\n");
+            getchar();
+        }
+    }
+    printf("数据已排序!\n");
+    if (config->result == 1) {
+        printf("\x1b[32m最终的结果: ");
+        for (int m = 0; m < size; m++) {
+            printf("%d ", arr[m].element);
+        }
+    }
+    printf("\x1b[0m\n");
+    end = clock(); // 记录结束时间
+    cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC; // 计算排序所需时间
+    if (config->Count == 1) printf("比较次数: %d   交换次数:%d\n", CompareCount, Swapcount);//显示比较交换次数
+    if (config->time == 1) printf("排序所需时间: %f 秒\n", cpu_time_used);//显示排序时间
+    for (int m = 0; m < size; m++) {//最后把颜色标记置回0
+        arr[m].Color = 0;
+    }
+}
+
+void InsertionSort(Number arr[], int size, Config* config) {//简单插入排序
+    clock_t start, end;
+    double cpu_time_used;
+    int Movecount = 0;//移动次数
+    int CompareCount = 0;//比较次数
+    start = clock(); // 记录开始时间
+    for (int i = 1; i < size; i++) {
+        E key = arr[i].element;
+        int j = i - 1;
+        while (j >= 0 && arr[j].element > key) {//把元素都往后面移动
+            arr[j + 1].element = arr[j].element;
+            arr[j + 1].Color = arr[j].Color; // 将Color一起移动
+            j = j - 1;
+            Movecount++;//移动次数加一
+        }
+        arr[j + 1].element = key;
+        CompareCount++;//比较次数加一
+        arr[i-1].Color = 1; //每一轮排好的设为1
+        if (config->SingleStepOperation == 1) {//单步过程功能开启就进行
+            for (int k = 0; k < size; k++) {
+                if (arr[k].Color == 0) {
+                    printf("%d ", arr[k].element);
+                }
+                else {
+                    printf("\x1b[31m%d\x1b[0m", arr[k].element);
+                    printf(" ");
+                }
+            }
+            printf("\n");
+            getchar();
+        }
+    }
+    printf("数据已排序!\n");
+    if (config->result == 1) {
+        printf("\x1b[32m最终的结果: ");
+        for (int m = 0; m < size; m++) {
+            printf("%d ", arr[m].element);
+        }
+    }
+    printf("\x1b[0m\n");
+    end = clock(); // 记录结束时间
+    cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC; // 计算排序所需时间
+    if (config->Count == 1) printf("比较次数: %d   移动次数:%d\n", CompareCount, Movecount);
+    if (config->time == 1) printf("排序所需时间: %f 秒\n", cpu_time_used);
+    for (int m = 0; m < size; m++) {//最后把颜色标记置回0
+        arr[m].Color = 0;
+    }
+}
+
+void ShellSort(Number arr[], int size, Config* config) {//希尔排序
+    clock_t start, end;
+    double cpu_time_used;
+    int Movecount = 0;//移动次数
+    int Groupcount = 0;//分组次数
+    start = clock(); // 记录开始时间
+    for (int gap = size / 2; gap > 0; gap /= 2) {//缩小步长
+        Groupcount++;
+        for (int i = gap; i < size; i++) {
+            E temp = arr[i].element;
+            int j;
+            for (j = i; j >= gap && arr[j - gap].element > temp; j -= gap) {
+                arr[j].element = arr[j - gap].element;
+                arr[j].Color = arr[j - gap].Color; // 将Color一起移动
+                Movecount++;//移动次数加一
+            }
+            arr[j].element = temp;
+            arr[j].Color = 1; // 将排好的元素的Color设置为1
+        }
+        if (config->SingleStepOperation == 1) {
+            for (int k = 0; k < size; k++) {
+                if (arr[k].Color == 0) {
+                    printf("%d ", arr[k].element);
+                }
+                else {
+                    printf("\x1b[31m%d\x1b[0m", arr[k].element);
+                    printf(" ");
+                }
+            }
+            printf("\n");
+            getchar();
+        }
+    }
+    printf("数据已排序!\n");
+    if (config->result == 1) {
+        printf("\x1b[32m最终的结果: ");
+        for (int m = 0; m < size; m++) {
+            printf("%d ", arr[m].element);
+        }
+    }
+    printf("\x1b[0m\n");
+    end = clock(); // 记录结束时间
+    cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC; // 计算排序所需时间
+    if (config->Count == 1) printf("分组次数: %d   移动次数:%d\n", Groupcount, Movecount);
+    if (config->time == 1) printf("排序所需时间: %f 秒\n", cpu_time_used);
+    for (int m = 0; m < size; m++) {//最后把颜色标记置回0
+        arr[m].Color = 0;
+    }
+}
+
+void QuickSort(Number arr[], int left, int right, Config* config, int* Comparecount, int* Swapcount) {
+    if (left < right) {
+        int i = left, j = right;
+        E pivot = arr[left].element;
+        while (i < j) {
+            while (i < j && arr[j].element >= pivot) {
+                (*Comparecount)++;
+                j--;
+            }
+            if (i < j) {
+                arr[i].element = arr[j].element;
+                (*Swapcount)++;
+                arr[i].Color = arr[j].Color; // 将Color一起移动
+                i++;
+            }
+            while (i < j && arr[i].element < pivot) {
+                i++;
+                (*Comparecount)++;
+            }
+            if (i < j) {
+                arr[j].element = arr[i].element;
+                (*Swapcount)++;
+                arr[j].Color = arr[i].Color; // 将Color一起移动
+                j--;
+            }
+        }
+        arr[i].element = pivot;
+        arr[i].Color = 1; // 将(中间分界的元素)排好的元素的Color设置为1
+        if (config->SingleStepOperation == 1) {//打印的是每轮排序的结果注意是会越来越小块的
+            for (int k = left; k <= right; k++) {
+                if (arr[k].Color == 0) {
+                    printf("%d ", arr[k].element);
+                } else {
+                    printf("\x1b[31m%d\x1b[0m", arr[k].element);
+                    printf(" ");
+                }
+            }
+            printf("\n");
+            getchar();
+        }
+        QuickSort(arr, left, i - 1, config, Comparecount, Swapcount);
+        QuickSort(arr, i + 1, right, config, Comparecount, Swapcount);
+    }
+}
+
+void QuickSortWrapper(Number arr[], int size, Config* config) {//快速排序
+    clock_t start, end;
+    double cpu_time_used;
+    int Comparecount = 0;//比较次数
+    int Swapcount = 0;//交换次数
+    
+    start = clock(); // 记录开始时间
+    QuickSort(arr, 0, size - 1, config, &Comparecount, &Swapcount);
+    printf("数据已排序!\n");
+    if (config->result == 1) {
+        printf("\x1b[32m最终的结果: ");
+        for (int m = 0; m < size; m++) {
+            printf("%d ", arr[m].element);
+        }
+    }
+    printf("\x1b[0m\n");
+    end = clock(); // 记录结束时间
+    cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC; // 计算排序所需时间
+    if (config->Count == 1) printf("比较次数： %d  交换次数: %d\n",Comparecount, Swapcount);
+    if (config->time == 1) printf("排序所需时间: %f 秒\n", cpu_time_used);
+    for (int m = 0; m < size; m++) {//最后把颜色标记置回0
+        arr[m].Color = 0;
+    }
+}
+
+void MaxHeapify(Number arr[], int size, int i, Config* config, int* compareCount, int* swapCount) {//建立堆
+    int largest = i; // 初始化最大值为根节点
+    int left = 2 * i + 1; // 左子节点的索引
+    int right = 2 * i + 2; // 右子节点的索引
+
+    (*compareCount) += 2;
+    // 如果左子节点存在且大于根节点，则更新最大值索引
+    if (left < size && arr[left].element > arr[largest].element) {
+        largest = left;
+    }
+
+    // 如果右子节点存在且大于当前最大值，更新最大值索引
+    if (right < size && arr[right].element > arr[largest].element) {
+        largest = right;
+    }
+
+    // 如果最大值不是根节点，交换根节点和最大值节点
+    if (largest != i) {
+        E temp = arr[i].element;
+        arr[i].element = arr[largest].element;
+        arr[largest].element = temp;
+        (*swapCount)++;
+
+        if (config->SingleStepOperation == 1) {//单步过程进行
+            for (int k = 0; k < size; k++) {
+                if (k == i || k == largest) {
+                    printf("\x1b[31m%d\x1b[0m ", arr[k].element);
+                }
+                else {
+                    printf("%d ", arr[k].element);
+                }
+            }
+            printf("\n");
+            getchar();
+        }
+        MaxHeapify(arr, size, largest, config, compareCount, swapCount); // 递归调整子树
+    }
+}
+
+void BuildMaxHeap(Number arr[], int size, Config* config, int* compareCount, int* swapCount) {
+    for (int i = size / 2 - 1; i >= 0; i--) {
+        MaxHeapify(arr, size, i, config, compareCount, swapCount);
+    }
+}
+
+void HeapSort(Number arr[], int size, Config* config) {
+    int compareCount = 0; // 比较次数
+    int swapCount = 0; // 交换次数
+    clock_t start, end;
+    double cpuTimeUsed;
+
+    start = clock(); // 记录开始时间
+
+    BuildMaxHeap(arr, size, config, &compareCount, &swapCount); // 构建最大堆
+
+    for (int i = size - 1; i > 0; i--) {
+        // 交换根节点和最后一个节点
+        E temp = arr[0].element;
+        arr[0].element = arr[i].element;
+        arr[i].element = temp;
+        swapCount++;
+
+        if (config->SingleStepOperation == 1) {
+            for (int k = 0; k < size; k++) {
+                if (k == 0 || k == i) {
+                    printf("\x1b[31m%d\x1b[0m ", arr[k].element);
+                }
+                else {
+                    printf("%d ", arr[k].element);
+                }
+            }
+            printf("\n");
+            getchar();
+        }
+
+        MaxHeapify(arr, i, 0, config, &compareCount, &swapCount); // 调整堆
+    }
+
+    end = clock(); // 记录结束时间
+    cpuTimeUsed = ((double)(end - start)) / CLOCKS_PER_SEC; // 计算排序所需时间
+
+    printf("数据已排序!\n");
+    if (config->result == 1) {
+        printf("\x1b[32m最终的结果: ");
+        for (int m = 0; m < size; m++) {
+            printf("%d ", arr[m].element);
+        }
+    }
+    printf("\x1b[0m\n");
+
+    if (config->Count == 1) printf("比较次数: %d   交换次数: %d\n", compareCount, swapCount);
+    if (config->time == 1) printf("排序所需时间: %f 秒\n", cpuTimeUsed);
+    for (int m = 0; m < size; m++) {//最后把颜色标记置回0
+        arr[m].Color = 0;
+    }
+}
+
+int checkOrder(Number arr[], int size) {
+    for (int i = 0; i < size - 1; ++i) {
+        if (arr[i].element > arr[i + 1].element) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+void MonkeySort(Number arr[], int size) {
+    int count = 0;
+    while(checkOrder(arr,size) == 0){//不有序就打乱，来洗牌，直到洗牌成有序
+        ShuffleArray(arr, size);//打乱
+        count++;
+    }
+    printf("猴子排序完成，一共排了%d轮\n",count);
+}
+void start2() {
+    srand(time(NULL)); // 使用当前时间作为随机数种子
+    int color_code = rand() % 7 + 31; // 生成 31 到 37 之间的随机数，对应不同颜色的 ANSI 转义码
+    printf("\x1b[%dm", color_code); // 设置文本颜色为随机颜色
+
+    printf("\n");
+    printf("\t\t\t\t  ██████╗ ██╗   ██╗███████╗███████╗██████╗ ██╗   ██╗\n");
+    printf("\t\t\t\t ██╔═══██╗██║   ██║██╔════╝██╔════╝██╔══██╗╚██╗ ██╔╝\n");
+    printf("\t\t\t\t ██║   ██║██║   ██║███████╗█████╗  ██████╔╝ ╚████╔╝ \n");
+    printf("\t\t\t\t ██║   ██║██║   ██║╚════██║██╔══╝  ██╔══██╗  ╚██╔╝  \n");
+    printf("\t\t\t\t ╚██████╔╝╚██████╔╝███████║███████╗██║  ██║   ██║   \n");
+    printf("\t\t\t\t  ╚═════╝  ╚═════╝ ╚══════╝╚══════╝╚═╝  ╚═╝   ╚═╝   \n");
+    printf("\n");
+    printf("\t\t\t\t           Welcome to the Sort Program!\n");
+    printf("\t\t\t\t                Developers: SICHENG YE\n");
+    printf("\t\t\t\t                    December 2023\n");
+    printf("\n");
+    printf("按回车继续...");
+    printf("\n\n");
+    printf("\x1b[0m"); // 恢复默认文本颜色
+}
+void start1() {
+    srand(time(NULL)); // 使用当前时间作为随机数种子
+    int color_code = rand() % 7 + 31; // 生成 31 到 37 之间的随机数，对应不同颜色的 ANSI 转义码
+    printf("\x1b[%dm", color_code); // 设置文本颜色为随机颜色
+    printf("\t\t        ****************************************************\n");
+    printf("\t\t       *           Welcome  to the Sort Program!          *\n");
+    printf("\t\t      *                                                  *\n");
+    printf("\t\t     *                                                  *\n");
+    printf("\t\t    *                          Developers: SICHENG YE  *\n");
+    printf("\t\t   *                                                  *\n");
+    printf("\t\t  *                                                  *\n");
+    printf("\t\t *                                    December 2023 *\n");
+    printf("\t\t****************************************************\n");
+    printf("按回车继续...");
+    printf("\n\n");
+    printf("\x1b[0m"); // 恢复默认文本颜色
+}
+
+void SortAlg() {
+    printf("\x1b[1;34m"); // 设置文本颜色为亮蓝色并加粗
+    printf("+ ------- + --------------- + --------- + ---------- + ---------- + --------- + -------- +\n");
+    printf("|排序算法 | 平均时间复杂度  | 最好情况  | 最坏情况   | 空间复杂度 | 排序方式  | 稳定性   |\n");
+    printf("+ ------- +---------------- +---------- +----------- + ---------- + --------- + -------- +\n");
+    printf("| \x1b[1;33m冒泡排序\x1b[1;34m|   O(n^2)        |    O(n)   |  O(n^2)    |    O(1)    |  内部排序 |   稳定   |\n");
+    printf("| \x1b[1;33m选择排序\x1b[1;34m|   O(n^2)        |  O(n^2)   |  O(n^2)    |    O(1)    |  内部排序 |  不稳定  |\n");
+    printf("| \x1b[1;33m插入排序\x1b[1;34m|   O(n^2)        |    O(n)   |  O(n^2)    |    O(1)    |  内部排序 |   稳定   |\n");
+    printf("| \x1b[1;33m希尔排序\x1b[1;34m|   O(nlogn)      |O(nlog^2n) |O(nlogn^2n) |    O(1)    |  内部排序 |  不稳定  |\n");
+    printf("| \x1b[1;33m快速排序\x1b[1;34m|   O(nlogn)      |O(nlogn)   |  O(n^2)    |  O(logn)   |  内部排序 |  不稳定  |\n");
+    printf("| \x1b[1;33m堆排序  \x1b[1;34m|   O(nlogn)      |O(nlogn)   |O(nlogn)    |    O(1)    |  内部排序 |  不稳定  |\n");
+    printf("+ ------- + --------------- + --------- + ---------- + ---------- + --------- + -------- +\n");
+    printf("\x1b[0m"); // 恢复默认文本颜色和样式
+}
+
+void PrintArray(Number arr[], int size) {
+    for (int i = 0; i < size; i++) {
+        printf("%d ",arr[i].element);
+    }
+}
+
+void SaveArrayToFile(Number arr[], int size, const char* filename) {//保存数组中的数据
+    FILE* file = fopen(filename, "wb"); // 以二进制写入模式打开文件
+    if (file == NULL) {
+        printf("无法打开文件\n");
+        return;
+    }
+    fwrite(arr, sizeof(Number), size, file); // 将结构体数组写入文件
+    fclose(file); // 关闭文件
+    printf("数据已成功保存到文件 %s\n", filename);
+}
+
+Number* LoadArrayFromFile(int* size, const char* filename) {//读取数据
+    FILE* file = fopen(filename, "rb"); // 以二进制读取模式打开文件
+    if (file == NULL) {
+        printf("无法打开文件\n");
+        return NULL;
+    }
+    fseek(file, 0, SEEK_END); // 定位到文件末尾
+    *size = ftell(file) / sizeof(Number); // 计算结构体数组的大小
+    fseek(file, 0, SEEK_SET); // 重新定位到文件开头
+    Number* arr = (Number*)malloc(*size * sizeof(Number)); // 分配内存存储结构体数组
+    if (arr == NULL) {
+        printf("内存分配失败!");
+        exit(1);
+    }
+    fread(arr, sizeof(Number), *size, file); // 从文件中读取结构体数组
+    fclose(file); // 关闭文件
+    printf("已成功从文件 %s 中读取数据\n", filename);
+    return arr;
+}
+
+void Description() {
+    printf("1.数据结构：使用了结构体 Number 来表示带有颜色标记的元素，以及结构体 Config 来存储用户设置。\n\n");
+    printf("2.动态内存分配：使用 malloc 和 realloc 来动态分配和扩展结构体数组的内存空间。\n\n");
+    printf("3.随机数生成：利用 rand 和 srand 生成随机数，用于创建随机数据和随机选择启动画面。\n\n");
+    printf("4.时间测量：使用 clock 函数来测量排序算法的执行时间。\n\n");
+    printf("5.文件操作：实现了将结构体数组保存到文件和从文件中读取结构体数组的功能，以及保存用户设置到文件的功能。\n\n");
+    printf("6.排序算法：实现了冒泡排序、选择排序、插入排序、希尔排序、快速排序、堆排序等排序算法，并支持单步显示排序过程、比较次数和交换次数显示、运行时间显示、排序结果显示等功能。\n\n");
+    printf("7.交互界面：使用 ANSI 转义码实现了彩色文本输出，提升了用户交互体验。\n\n");
+    printf("8.彩蛋功能：添加了猴子排序作为彩蛋功能，当数据未排序时，程序会自动进行猴子排序直到数据有序。\n\n");
+    printf("9.设置功能：用户可以根据需要自定义是否显示排序过程、比较次数和交换次数、运行时间、排序结果，以及是否保存数据。\n\n");
+    printf("按回车返回...");
+    printf("\n\n");
+    getchar(); // 等待用户按下回车键
+    getchar(); // 等待用户按下回车键
+}
+
+void Sortmenu(Number* arr, int * size, Config* config) {//排序菜单
+    printf("\x1b[1;36m"); // 设置文本颜色为亮青色并加粗
+    printf("\t\t\t\t\t====================\n");
+    printf("\t\t\t\t\t|1. \x1b[1;33m冒泡排序\x1b[1;36m        |\n"); // 设置数字为亮黄色
+    printf("\t\t\t\t\t|2. \x1b[1;33m选择排序\x1b[1;36m        |\n");
+    printf("\t\t\t\t\t|3. \x1b[1;33m插入排序\x1b[1;36m        |\n");
+    printf("\t\t\t\t\t|4. \x1b[1;33m希尔排序\x1b[1;36m        |\n");
+    printf("\t\t\t\t\t|5. \x1b[1;33m快速排序\x1b[1;36m        |\n");
+    printf("\t\t\t\t\t|6. \x1b[1;33m堆排序  \x1b[1;36m        |\n");
+    printf("\t\t\t\t\t|7. \x1b[1;33m返回    \x1b[1;36m        |\n");
+    printf("\t\t\t\t\t|8. \x1b[1;33m彩蛋    \x1b[1;36m        |\n");
+    printf("\t\t\t\t\t====================\n");
+    printf("\t\t\t\t\t请选择排序方式:");
+    printf("\x1b[0m"); // 恢复默认文本颜色和样式
+    int choice;
+    scanf("%d",&choice);
+    switch (choice) {
+    case 1: {
+        BubbleSort(arr, *size, config);
+        break;
+    }
+    case 2: {
+        SelectionSort(arr, *size, config);
+        break;
+    }
+    case 3: {
+        InsertionSort(arr, *size, config);
+        break;
+    }
+    case 4: {
+        ShellSort(arr, *size, config);
+        break;
+    }
+    case 5: {
+        QuickSortWrapper(arr, *size, config);
+        break;
+    }
+    case 6: {
+        HeapSort(arr, *size, config);
+        break;
+    }
+    case 8:{
+        MonkeySort(arr, *size);
+        break;
+    }
+    default: {
+        return;
+    }
+    }
+}
+/**
+* 内部排序：冒泡 选择 插入 希尔 快速 堆
+*/
+
+int main() {
+    Number* arr = NULL;
+    int size = 0;
+    Config* config = InitConfig();
+    srand(time(NULL)); // 使用当前时间作为随机数种子
+    int choice = rand() % 2; // 生成 0 或 1 的随机数
+    if (choice == 0) {//随机用哪个启动画面
+        start1(); // 随机执行 start1 函数
+    }
+    else {
+        start2(); // 随机执行 start2 函数
+    }
+    char ch = getchar();
+    system("cls");
+    while (1) {
+        printf("\x1b[1;35m"); // 设置文本颜色为亮紫色并加粗
+        printf("\t\t\t\t=============================================\n");
+        printf("\t\t\t\t|                欢迎使用程序               |\n");
+        printf("\t\t\t\t|-------------------------------------------|\n");
+        printf("\t\t\t\t| \x1b[1;33m1.             生成随机数据               \x1b[1;35m|\n"); // 设置数字和文本颜色为亮黄色
+        printf("\t\t\t\t| \x1b[1;33m2.             手动插入数据               \x1b[1;35m|\n");
+        printf("\t\t\t\t| \x1b[1;33m3.               打印数据                 \x1b[1;35m|\n");
+        printf("\t\t\t\t| \x1b[1;33m4.               打乱数据                 \x1b[1;35m|\n");
+        printf("\t\t\t\t| \x1b[1;33m5.                 排序                   \x1b[1;35m|\n");
+        printf("\t\t\t\t| \x1b[1;33m6.             显示排序总结               \x1b[1;35m|\n");
+        printf("\t\t\t\t| \x1b[1;33m7.               清空数据                 \x1b[1;35m|\n");
+        printf("\t\t\t\t|-------------------------------------------|\n");
+        printf("\t\t\t\t| \x1b[1;33m8.                设置                    \x1b[1;35m|\n");
+        printf("\t\t\t\t| \x1b[1;33m9.             读取上次存档               \x1b[1;35m|\n");
+        printf("\t\t\t\t| \x1b[1;33m10.            查看项目说明               \x1b[1;35m|\n");
+        printf("\t\t\t\t| \x1b[1;33m11.               退出                    \x1b[1;35m|\n");
+        printf("\t\t\t\t=============================================\n");
+        printf("\t\t\t\t请选择: ");
+        printf("\x1b[0m"); // 恢复默认文本颜色和样式
+        int ch;
+        scanf("%d", &ch);
+        switch (ch) {
+        case 1: {
+            printf("请输入个数:");       
+            scanf("%d", &size);
+            if (size < 1) {
+                printf("数组大小至少为1\n");
+                break;
+            }
+            arr = CreateStructArray(size);
+            if (RandomArray(arr, size)) {
+                printf("已随机生成%d个数据",size);
+            };
+            break;
+        }
+        case 2: {
+            if (arr == NULL || size == 0) {
+                arr = CreateStructArray(1); // 创建一个容量为1的数组
+                size = 0;//但是size还必须是1，因为后面会进行扩容一次
+            }
+            arr = Resize(arr,&size);//扩容数组
+            printf("请输入要插入的元素值: ");
+            scanf("%d", &arr[size - 1].element); // 将新元素插入到数组末尾
+            arr[size - 1].Color = 0; // 将Color重置为0
+            printf("手动插入成功!");
+            break;
+        }
+        case 3: {
+            if (arr == NULL || size == 0) {
+                printf("数组为空，请先生成或插入数据\n");
+            }
+            else {
+                PrintArray(arr, size);
+            }
+            break;
+        }
+        case 4: {
+            if (arr == NULL || size == 0) {
+                printf("数组为空，请先生成或插入数据\n");
+            }
+            else {
+                ShuffleArray(arr, size);//打乱数据
+                printf("数据已经被打乱");
+            }
+            break;
+        }
+        case 5: {
+            if (arr == NULL || size == 0) {
+                printf("数组为空，请先生成或插入数据\n");
+            }
+            else {
+                system("cls");
+                Sortmenu(arr, &size, config);
+            }
+            break;
+        }
+        case 6: {
+            SortAlg();
+            break;
+        }
+        case 7: {
+            if (arr == NULL || size == 0) {
+                printf("数组为空，请先生成或插入数据\n");
+            }
+            else {
+                ClearArray(arr); // 清空数据  
+                size = 0;
+                printf("数据已清空");
+            }
+            break;
+        }
+        case 8: {
+            system("cls");
+            ChangeConfig(config);
+            break;
+        }
+        case 9: {
+            printf("正在读档...\n");
+            Sleep(1000);
+            arr = LoadArrayFromFile(&size, "data.bin");//读取数据
+            break;
+        }
+        case 10: {
+            Description();
+            break;
+        }
+        case 11: {
+            if (config->save == 1) {
+                printf("正在保存数据\n");
+                Sleep(1000);
+                SaveArrayToFile(arr, size, "data.bin"); // 将结构体数组保存到名为 data.bin 的文件中
+            }
+            printf("正在退出...请稍后");
+            Sleep(2000);
+            return;
+        }
+        }
+        Sleep(2000);
+        system("cls");
+    }
+    return 0;
+}
